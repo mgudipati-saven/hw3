@@ -25,8 +25,9 @@
 
 import mincemeat
 import glob
+import pprint
 
-text_files = glob.glob('hw3data/c*')
+text_files = glob.glob('hw3data/*')
 
 # returns the file contents
 def file_contents(file_name):
@@ -38,15 +39,19 @@ def file_contents(file_name):
 
 # map function
 def mapfn(key, val):
-  for line in val.split('\r\n'):
+  import stopwords
+  
+  for line in val.splitlines():
     arr = line.split(':::')
     #['books/idea/becker2003/SerranoCP03', 'Manuel Serrano::Coral Calero::Mario Piattini', 'Metrics for Data Warehouse Quality.']  
     if len(arr) == 3:
       for word in arr[2].split():
         #['Metrics', 'for', 'Data', 'Warehouse', 'Quality.']
-        for auth in arr[1].split('::'):
-          #['Manuel Serrano', 'Coral Calero', 'Mario Piattini']
-          yield auth+':'+word, 1 #['Manuel Serrano:Metrics' => 1]
+        word = word.lower().strip(',.-+:*!@#$%^&=_()~/><;][}{|]').replace('-', ' ')
+        if (len(word) > 1) and word not in stopwords.allStopWords:
+          for auth in arr[1].split('::'):
+            #['Manuel Serrano', 'Coral Calero', 'Mario Piattini']
+            yield auth+':'+word, 1 #['Manuel Serrano:Metrics': 1]
 
 # reduce function
 def reducefn(key, val):
@@ -62,4 +67,11 @@ server.reducefn = reducefn
 
 # start the server
 results = server.run_server(password="changeme")
-print results
+
+# print the results into a file in CSV format - author, term, count
+f = open('output.txt', 'w')
+for key in results.keys():
+  #'Manuel Serrano:Metrics'
+  arr = key.split(':')
+  f.write(arr[0] + "," + arr[1] + "," + str(results[key]) + "\r\n")
+f.close()
